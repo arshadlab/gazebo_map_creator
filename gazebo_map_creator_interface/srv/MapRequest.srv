@@ -1,0 +1,13 @@
+# Request to send step count to simulator
+geometry_msgs/Point   upperleft
+geometry_msgs/Point   upperright 
+geometry_msgs/Point   lowerright
+geometry_msgs/Point   lowerleft 
+float64               height 1.0   # Upper Height
+float64               ground_height 0.001   # Lower height
+float64               resolution 0.01
+float64               distance 0.02   # Distance to check for horizontal collision.
+string                filename "map"
+int32                 threshold 255
+---
+bool success 
