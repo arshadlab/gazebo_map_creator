@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(gazebo_map_creator_plugin)
+project(gazebo_map_creator)
 
 # Default to C++14
 if(NOT CMAKE_CXX_STANDARD)
@@ -22,17 +22,24 @@ if(WIN32)
 endif()
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_python REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(gazebo_dev REQUIRED)
 find_package(gazebo_ros REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(gazebo_map_creator_interface REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclpy REQUIRED)
+find_package(PCL 1.2 REQUIRED)
 
+include_directories(${PCL_INCLUDE_DIRS})
 
 link_directories(
   ${gazebo_dev_LIBRARY_DIRS}
+  ${PCL_LIBRARY_DIRS}
 )
+
+add_definitions(${PCL_DEFINITIONS})
 
 # gazebo_ros_init
 add_library(gazebo_map_creator SHARED
@@ -51,11 +58,18 @@ ament_export_dependencies(gazebo_dev)
 
 target_link_libraries(gazebo_map_creator
   ${GAZEBO_LIBRARIES}
+  ${PCL_LIBRARIES}
+)
+
+#ament_python_install_package(${PROJECT_NAME}/..)
+
+install(PROGRAMS DESTINATION lib/${PROJECT_NAME}/ )
+install(DIRECTORY scripts DESTINATION share/${PROJECT_NAME})
+install(TARGETS gazebo_map_creator LIBRARY DESTINATION lib )
+# Install Python executables
+install(PROGRAMS
+  scripts/request_map.py
+  DESTINATION lib/${PROJECT_NAME}
 )
 
 ament_package()
-
-install(PROGRAMS DESTINATION lib/${PROJECT_NAME}/ )
-install(DIRECTORY script DESTINATION share/${PROJECT_NAME})
-install(TARGETS gazebo_map_creator LIBRARY DESTINATION lib )
-

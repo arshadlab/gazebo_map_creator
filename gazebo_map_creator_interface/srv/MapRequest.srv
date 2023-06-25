@@ -1,13 +1,14 @@
-# Request to send step count to simulator
-geometry_msgs/Point   upperleft
-geometry_msgs/Point   upperright 
+# Define constants
+uint8 MAP_2D  = 0
+uint8 MAP_3D  = 1
+
+# Request to send for map creation
 geometry_msgs/Point   lowerright
-geometry_msgs/Point   lowerleft 
-float64               height 1.0   # Upper Height
-float64               ground_height 0.001   # Lower height
-float64               resolution 0.01
-float64               distance 0.02   # Distance to check for horizontal collision.
+geometry_msgs/Point   upperleft
+uint8                 skip_vertical_scan 0   # Default is 2d map (e.g .pgm)
+float64               resolution 0.01  # smaller the value, higher the resolution
+float64               range_multiplier 0.55   # Distance multiplier to check for horizontal collision.
+int32                 threshold_2d 255
 string                filename "map"
-int32                 threshold 255
 ---
 bool success 
