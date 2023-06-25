@@ -47,7 +47,7 @@ pcl_viewer map.pcd
 ```
 
 # Output samples
-![image](https://github.com/arshadlab/gazebo_map_creator/assets/85929438/4b02c6f9-47e1-49da-af49-d3478d9ad815)
+![image](https://github.com/arshadlab/gazebo_map_creator/assets/85929438/55abee71-e9ac-4a64-a159-e7b8dd059cd5)
 
 ![aws](https://github.com/arshadlab/gazebo_map_creator/assets/85929438/f68d92ec-ff45-4faa-979c-e96d3c585e20)
 
@@ -59,4 +59,4 @@ pcl_viewer map.pcd
 
 
 # Acknowledgement
-[Gazebo Custom Messages](https://gazebosim.org/wiki/Tutorials/1.9/custom_messages)
+Inspiration came from [Gazebo Custom Messages](https://gazebosim.org/wiki/Tutorials/1.9/custom_messages)
