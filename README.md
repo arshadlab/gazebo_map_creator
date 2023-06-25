@@ -34,7 +34,7 @@ $ ros2 run gazebo_map_creator request_map.py -c '(-4.8,-4.5,0.03)(4.8,4.5,8.0)' 
 $ ls
 map.pcd map.pgm  map.png  map.yaml
 ```
-### Result Viewing
+### Viewing Results
 ```
 # Open 2D pgm map.
 # sudo apt-get install xdg-utils
