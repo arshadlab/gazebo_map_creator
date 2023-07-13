@@ -5,7 +5,7 @@ Creating maps for ROS2 Navigation 2 (Nav2) in Gazebo has traditionally been a ch
 
 This git repository presents a Gazebo plugin, interfaced with a ROS2 service, specifically develop to generate 2D (.pgm) and 3D maps (Point Cloud) directly from the Gazebo world.
 
-Tested on ROS2 Foxy and ROS2 Humble.
+Tested on ROS2 (Foxy, Humble & Iron).
 
 Guide:
 
