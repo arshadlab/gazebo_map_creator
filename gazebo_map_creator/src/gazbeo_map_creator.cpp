@@ -15,21 +15,21 @@
 #include <fstream>
 #include <iostream>
 #include <cmath>
-#include <boost/gil.hpp>
-#include <boost/gil/io/dynamic_io_new.hpp>
-#include <boost/gil/extension/io/png/old.hpp>
-#include <boost/shared_ptr.hpp>
-#include <ignition/math/Vector3.hh>
-#include <gazebo_ros/node.hpp>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_types.h>
-#include <octomap/octomap.h>
 #include "gazebo/gazebo.hh"
 #include "gazebo/common/common.hh"
 #include "gazebo/msgs/msgs.hh"
 #include "gazebo/physics/physics.hh"
 #include "gazebo/transport/transport.hh"
 #include <gazebo_map_creator_interface/srv/map_request.hpp>
+#include <gazebo_ros/node.hpp>
+#include <ignition/math/Vector3.hh>
+#include <boost/gil.hpp>
+#include <boost/gil/io/dynamic_io_new.hpp>
+#include <boost/gil/extension/io/png/old.hpp>
+#include <boost/shared_ptr.hpp>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <octomap/octomap.h>
 
 namespace gazebo
 {
