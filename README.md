@@ -39,7 +39,7 @@ Console B
 $ source ./install/setup.bash
 $ ros2 run gazebo_map_creator request_map.py -c '(-4.8,-4.5,0.03)(4.8,4.5,8.0)' -r 0.01 -f $PWD/map
 $ ls
-map.pcd map.pgm  map.png  map.yaml
+map.pcd map.bt map.pgm  map.png  map.yaml
 ```
 ### Viewing Results
 ```
