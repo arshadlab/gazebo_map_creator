@@ -23,6 +23,7 @@
 #include <gazebo_ros/node.hpp>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <octomap/octomap.h>
 #include "gazebo/gazebo.hh"
 #include "gazebo/common/common.hh"
 #include "gazebo/msgs/msgs.hh"
@@ -202,12 +203,24 @@ class GazeboMapCreator : public gazebo::SystemPlugin
     
     if (!_req->filename.empty())
     { 
-        // Save pcd file
-        pcl::io::savePCDFileASCII (_req->filename + ".pcd", cloud);
-        std::cout << "Output location: " << _req->filename + ".pcd" << std::endl;
+        if(cloud.size() > 0)
+        {
+          // Save pcd file
+          pcl::io::savePCDFileASCII (_req->filename + ".pcd", cloud);
         
+          // Save octomap file
+          octomap::OcTree octree(_req->resolution);
+          for (auto p:cloud.points)
+              octree.updateNode(octomap::point3d(p.x, p.y, p.z), true );
+          octree.updateInnerOccupancy();
+          octree.writeBinary(_req->filename + ".bt");
+        }
+
+        // Save png file
         boost::gil::gray8_view_t view = image._view;
         boost::gil::png_write_view(_req->filename+".png", view); 
+
+        // Save pgm file
         pgm_write_view(_req->filename, view);
 
         // Write down yaml file for nav2 usage.
@@ -230,7 +243,7 @@ class GazeboMapCreator : public gazebo::SystemPlugin
             std::cout << "Unable to open yaml file for writing." << std::endl;
         }
 
-        std::cout << "Output location: " << _req->filename + "[.pcd, .pgm, .png, .yaml]" << std::endl; 
+        std::cout << "Output location: " << _req->filename + "[.pcd, .bt, .pgm, .png, .yaml]" << std::endl;
     }
 
    
