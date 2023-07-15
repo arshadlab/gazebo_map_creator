@@ -3,9 +3,9 @@ For realistic navigation utilizing Nav2, maps are typically produced employing S
 
 Creating maps for ROS2 Navigation 2 (Nav2) in Gazebo has traditionally been a challenging task. The prevailing method involved employing Simultaneous Localization and Mapping (SLAM) and navigating robots through the environment to create these maps. For ROS1 Kinetic, a plugin was developed to mitigate this issue, enabling map creation without relying on SLAM. However, this solution was limited to ROS1 and generated 2D maps only.
 
-This git repository presents a Gazebo plugin, interfaced with a ROS2 service, specifically develop to generate 2D (.pgm) and 3D maps (Point Cloud) directly from the Gazebo world.
+This git repository presents a Gazebo 11 (Classic) plugin, interfaced with a ROS2 service, specifically develop to generate 2D (.pgm) and 3D maps (Point Cloud) directly from the Gazebo world.
 
-Tested on ROS2 (Foxy, Humble & Iron).
+Tested on ROS2 (Foxy, Humble & Iron) with Gazebo 11 (Classic).
 
 Guide:
 
