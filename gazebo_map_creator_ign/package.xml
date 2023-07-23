@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>gazebo_map_creator_ign</name>
+  <version>3.5.3</version>
+  <description>
+    Plugin to provide map creation support for IGN Gazebo
+  </description>
+
+  <maintainer email="arshad.mehmood@intel.com">Arshad Mehmood</maintainer>
+
+  <license>Apache 2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
+  <depend condition="$GZ_VERSION == ''">ignition-gazebo6</depend>
+  <depend condition="$GZ_VERSION == fortress">ignition-gazebo6</depend>
+  <depend condition="$GZ_VERSION == garden">gz-sim7</depend>
+
+  <depend condition="$GZ_VERSION == ''">ignition-plugin</depend>
+  <depend condition="$GZ_VERSION == fortress">ignition-plugin</depend>
+  <depend condition="$GZ_VERSION == garden">gz-plugin2</depend>
+  <depend>pluginlib</depend>
+  <depend>gazebo_map_creator_interface</depend>
+  <depend>rclcpp</depend>
+  <depend>rclpy</depend>
+  <depend>std_srvs</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

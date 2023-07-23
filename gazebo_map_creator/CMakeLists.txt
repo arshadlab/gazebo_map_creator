@@ -41,7 +41,6 @@ link_directories(
 
 add_definitions(${PCL_DEFINITIONS})
 
-# gazebo_ros_init
 add_library(gazebo_map_creator SHARED
   src/gazbeo_map_creator.cpp
 )
@@ -60,8 +59,6 @@ target_link_libraries(gazebo_map_creator
   ${GAZEBO_LIBRARIES}
   ${PCL_LIBRARIES}
 )
-
-#ament_python_install_package(${PROJECT_NAME}/..)
 
 install(PROGRAMS DESTINATION lib/${PROJECT_NAME}/ )
 install(DIRECTORY scripts DESTINATION share/${PROJECT_NAME})
