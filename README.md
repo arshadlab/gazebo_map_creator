@@ -5,7 +5,10 @@ Creating maps for ROS2 Navigation 2 (Nav2) in Gazebo has traditionally been a ch
 
 This git repository presents a Gazebo 11 (Classic) plugin, interfaced with a ROS2 service, specifically develop to generate 2D (.pgm) and 3D maps (Point Cloud) directly from the Gazebo world.
 
+
 Tested on ROS2 (Foxy, Humble & Iron) with Gazebo 11 (Classic).
+
+Some work done for IGN gazebo support.  Partial code in gazebo_map_creator_ign directory (build disabled).
 
 Guide:
 
@@ -65,5 +68,6 @@ pcl_viewer map.pcd
 ![image](https://github.com/arshadlab/gazebo_map_creator/assets/85929438/eb1a6384-3332-43fe-a506-f98c9b0eca2a)
 
 
+  
 # Acknowledgement
 Inspiration came from [Gazebo Custom Messages](https://gazebosim.org/wiki/Tutorials/1.9/custom_messages)
