@@ -21,7 +21,7 @@ sudo apt-get install libboost-dev libpcl-dev
 
 ### Build
 ```
-source /opt/ros/DISTRO/setup.bash
+source /opt/ros/<humble|foxy>/setup.bash
 mkdir -p robot_ws/src
 cd robot_ws/src
 git clone https://github.com/arshadlab/gazebo_map_creator.git
