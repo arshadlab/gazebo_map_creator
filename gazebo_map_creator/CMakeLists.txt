@@ -1,69 +1,79 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.10)
 project(gazebo_map_creator)
 
-# Default to C++14
-if(NOT CMAKE_CXX_STANDARD)
-  set(CMAKE_CXX_STANDARD 14)
-endif()
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Warnings
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  # we dont use add_compile_options with pedantic in message packages
-  # because the Python C extensions dont comply with it
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Wno-inconsistent-missing-override")
+  add_compile_options(-Wall -Wextra -Wpedantic -Wno-inconsistent-missing-override)
 endif()
 
+# Platform defines
 if(WIN32)
   add_compile_definitions(
-    # For math constants
     _USE_MATH_DEFINES
-    # Minimize Windows namespace collision
     NOMINMAX
     WIN32_LEAN_AND_MEAN
   )
 endif()
 
+# Dependencies
 find_package(ament_cmake REQUIRED)
-find_package(ament_cmake_python REQUIRED)
-find_package(builtin_interfaces REQUIRED)
-find_package(gazebo_dev REQUIRED)
-find_package(gazebo_ros REQUIRED)
-find_package(geometry_msgs REQUIRED)
-find_package(gazebo_map_creator_interface REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rclpy REQUIRED)
-find_package(PCL 1.2 REQUIRED)
+find_package(gazebo_map_creator_interface REQUIRED)  # your custom service package
+find_package(PCL REQUIRED)
 
-include_directories(${PCL_INCLUDE_DIRS})
+# Gazebo Sim dependencies
+find_package(gz-sim8 REQUIRED) # adjust if you're using a newer sim version
+find_package(gz-plugin2 REQUIRED)
+
+find_package(PCL REQUIRED)
+
+find_package(gz-msgs10 REQUIRED)
+
+
+include_directories(
+  ${PCL_INCLUDE_DIRS}
+)
+
+include_directories(
+  ${gz-msgs10_INCLUDE_DIRS}
+)
 
 link_directories(
-  ${gazebo_dev_LIBRARY_DIRS}
   ${PCL_LIBRARY_DIRS}
 )
 
+
+
 add_definitions(${PCL_DEFINITIONS})
 
-add_library(gazebo_map_creator SHARED
+# Plugin library
+add_library(map_creator_plugin SHARED
   src/gazbeo_map_creator.cpp
 )
 
-ament_target_dependencies(gazebo_map_creator
-  "gazebo_map_creator_interface"
-  "geometry_msgs"
-  "gazebo_dev"
-  "gazebo_ros"
+ament_target_dependencies(map_creator_plugin
+  rclcpp
+  gazebo_map_creator_interface
+  gz-sim8
+  gz-msgs10
+  gz-plugin2
 )
 
-ament_export_libraries(gazebo_map_creator)
-ament_export_dependencies(gazebo_dev)
-
-target_link_libraries(gazebo_map_creator
-  ${GAZEBO_LIBRARIES}
+target_link_libraries(map_creator_plugin
+  gz-msgs10::gz-msgs10
   ${PCL_LIBRARIES}
 )
 
-install(PROGRAMS DESTINATION lib/${PROJECT_NAME}/ )
-install(DIRECTORY scripts DESTINATION share/${PROJECT_NAME})
-install(TARGETS gazebo_map_creator LIBRARY DESTINATION lib )
-# Install Python executables
+# Export and install
+install(TARGETS map_creator_plugin
+  LIBRARY DESTINATION lib
+)
+
+# Optional: Python script for ROS request (if you have one)
 install(PROGRAMS
   scripts/request_map.py
   DESTINATION lib/${PROJECT_NAME}

@@ -1,280 +1,182 @@
-// Copyright (c) 2023.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// Updated for ROS 2 Jazzy and Gazebo Harmonic (gz-sim8)
+#include <gz/sim/System.hh>
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/components/World.hh>
+#include <gz/plugin/Register.hh>
+#include <gz/sim/Util.hh>
+#include <gz/sim/components/Pose.hh>
+#include <gz/math/Vector3.hh>
+#include <gz/physics/RequestEngine.hh>
+#include <gz/physics/World.hh>
+#include <gz/physics/Shape.hh>
+#include <gz/plugin/Loader.hh>
+#include <gz/physics/RequestEngine.hh>
+#include <gz/physics/ConstructEmpty.hh>
+#include <gz/physics/FindFeatures.hh>
+//#include <gz/physics/RayShape.hh>
+#include <gz/sim/rendering/SceneManager.hh>
+#include <gz/rendering/RenderEngine.hh>
+#include <gz/rendering/RenderingIface.hh>
+#include <gz/rendering/Scene.hh>
+#include "gz/sim/rendering/Events.hh"
+#include "gz/sim/Events.hh"
+#include "gz/sim/rendering/RenderUtil.hh"
 
-#include <fstream>
-#include <iostream>
-#include <cmath>
-#include "gazebo/gazebo.hh"
-#include "gazebo/common/common.hh"
-#include "gazebo/msgs/msgs.hh"
-#include "gazebo/physics/physics.hh"
-#include "gazebo/transport/transport.hh"
+#include <gz/sim/System.hh>
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/components/World.hh>
+#include <gz/plugin/Register.hh>
+#include <gz/sim/Util.hh>
+#include <gz/sim/components/Pose.hh>
+#include <gz/math/Vector3.hh>
+#include <gz/transport/Node.hh>
+//#include <gz/msgs/laser_scan.hh>
+#include <gz/msgs/laserscan.pb.h>
+
+#include <rclcpp/rclcpp.hpp>
 #include <gazebo_map_creator_interface/srv/map_request.hpp>
-#include <gazebo_ros/node.hpp>
-#include <ignition/math/Vector3.hh>
-#include <boost/gil.hpp>
-#include <boost/gil/io/dynamic_io_new.hpp>
-#include <boost/gil/extension/io/png/old.hpp>
-#include <boost/shared_ptr.hpp>
-#include <pcl/io/pcd_io.h>
+
+#include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
+#include <pcl/io/pcd_io.h>
+
 #include <octomap/octomap.h>
 
-namespace gazebo
+using namespace gz;
+using namespace gz::sim;
+using namespace sim;
+using namespace systems;
+
+using pcl::PointCloud;
+using pcl::PointXYZ;
+
+namespace gazebo_map_creator
 {
-
-class GazeboMapCreator : public gazebo::SystemPlugin
+class GazeboMapCreator
+  : public System,
+    public ISystemConfigure
 {
-  gazebo_ros::Node::SharedPtr ros_node_;
-
-  rclcpp::Service<gazebo_map_creator_interface::srv::MapRequest>::SharedPtr  map_service_;
-  physics::WorldPtr world_;
-
-  /// To be notified once the world is created.
-  gazebo::event::ConnectionPtr world_created_event_;
-
-  public: void Load(int argc, char ** argv)
+public:
+  virtual void Configure(
+    const Entity &/*_entity*/,
+    const std::shared_ptr<const sdf::Element> &/*_sdf*/,
+    EntityComponentManager & _ecm,
+    EventManager &/*_eventMgr*/)
   {
-    if (!rclcpp::ok()) {
-      rclcpp::init(argc, argv);      
-    } 
-    
-    ros_node_ = gazebo_ros::Node::Get();
+    if (!rclcpp::ok())
+      rclcpp::init(0, nullptr);
 
-    // Get a callback when a world is created
-    this->world_created_event_ = gazebo::event::Events::ConnectWorldCreated(
-      std::bind(&GazeboMapCreator::OnWorldCreated, this, std::placeholders::_1));
- 
-  }
+    this->node_ = std::make_shared<rclcpp::Node>("gazebo_map_creator_node");
 
-  public: void OnWorldCreated(const std::string & _world_name)
-  {
-      world_created_event_.reset();
-      world_ = gazebo::physics::get_world(_world_name);
-
-      // Create service for map creation request
-      map_service_ = ros_node_->create_service<gazebo_map_creator_interface::srv::MapRequest>(
+    this->map_service_ = node_->create_service<gazebo_map_creator_interface::srv::MapRequest>(
       "/world/save_map",
-      std::bind(
-        &GazeboMapCreator::OnMapCreate, this,
-        std::placeholders::_1, std::placeholders::_2));
-  }
-  
-  public: void OnMapCreate(const std::shared_ptr<gazebo_map_creator_interface::srv::MapRequest::Request> _req,
-                      std::shared_ptr<gazebo_map_creator_interface::srv::MapRequest::Response>  _res )
-  {
-    RCLCPP_INFO(ros_node_->get_logger(), "Received message");
+      std::bind(&GazeboMapCreator::OnMapCreate, this, std::placeholders::_1, std::placeholders::_2,  std::ref(_ecm)));
 
-     // Calculate the size of the cubic area
-    float size_x = _req->upperleft.x - _req->lowerright.x;
-    float size_y = _req->lowerright.y - _req->upperleft.y;  // size_y to be -ve
-    float size_z = _req->upperleft.z - _req->lowerright.z;
-    
-    // Check for coordinate validity
-    if (size_x <= 0 || size_y >=0 || size_z <= 0 )
+    gz_node_.Subscribe("/world/default/model/virtual_lidar/link/lidar_link/sensor/ray_sensor/scan", &GazeboMapCreator::OnLidarData, this);
+
+    RCLCPP_INFO(this->node_->get_logger(), "Map Creator Plugin loaded and service advertised.");
+  }
+
+  void OnMapCreate(
+    const std::shared_ptr<gazebo_map_creator_interface::srv::MapRequest::Request> req,
+    std::shared_ptr<gazebo_map_creator_interface::srv::MapRequest::Response> res,
+    EntityComponentManager &_ecm)
+  {
+    RCLCPP_INFO(node_->get_logger(), "Map request received: resolution = %f", req->resolution);
+
+    // Area calculations
+    float size_x = req->upperleft.x - req->lowerright.x;
+    float size_y = req->lowerright.y - req->upperleft.y;
+    float size_z = req->upperleft.z - req->lowerright.z;
+
+    if (size_x <= 0 || size_y >= 0 || size_z <= 0)
     {
-        RCLCPP_ERROR(ros_node_->get_logger(), "Invalid coordinates");
-        _res->success = false;
-        return;
+      RCLCPP_ERROR(node_->get_logger(), "Invalid coordinates");
+      res->success = false;
+      return;
     }
-    // Calculate the number of points in each dimension
-    int num_points_x = static_cast<int>(std::abs(size_x) / _req->resolution) + 1;
-    int num_points_y = static_cast<int>(std::abs(size_y) / _req->resolution) + 1;
-    int num_points_z = static_cast<int>(std::abs(size_z) / _req->resolution) + 1;
-    
-    // Calculate the step size in each dimension
+
+    int num_points_x = static_cast<int>(std::abs(size_x) / req->resolution) + 1;
+    int num_points_y = static_cast<int>(std::abs(size_y) / req->resolution) + 1;
+    int num_points_z = req->skip_vertical_scan ? 2 : static_cast<int>(std::abs(size_z) / req->resolution) + 1;
+
     float step_x = size_x / num_points_x;
     float step_y = size_y / num_points_y;
-    float step_z = size_z / num_points_z;   
- 
-    int dims = 6;
+    float step_z = req->skip_vertical_scan ? size_z : size_z / num_points_z;
 
-    if (_req->skip_vertical_scan) 
-    {
-      num_points_z = 2;
-      step_z = size_z;
-      dims = 4;
-    }
-
-    std::cout << "-----------------" << std::endl << "Area Corners: (lower right, upper left)  (" <<
-      _req->lowerright.x << ", " << _req->lowerright.y << ", " << _req->lowerright.z << "), (" <<
-      _req->upperleft.x << ", " << _req->upperleft.y << ", " << _req->upperleft.z << ") " <<  std::endl <<
-      "Area size : " << size_x << " x " << size_y << " x " << size_z << " (WxLxH)" << std::endl <<
-      "Step size : " << step_x << ", " << step_y << ", " << step_z << " (stepx, stepy, stepz) " << std::endl <<
-      "Resolution: (" << num_points_x << ", " <<  num_points_y << ", " << num_points_z << ") - "  << _req->resolution << std::endl <<
-      "Map Mode: " << (_req->skip_vertical_scan ? "Partial Scan": "Full Scan")  << std::endl << "-----------------" << std::endl ;
-
-    // Create ray object for collision detection
-    gazebo::physics::PhysicsEnginePtr engine = world_->Physics();
-    engine->InitForThread();
-    gazebo::physics::RayShapePtr ray =
-        boost::dynamic_pointer_cast<gazebo::physics::RayShape>(
-        engine->CreateShape("ray", gazebo::physics::CollisionPtr()));
-
-    // Pixed values near to 0 means occupied and 255 means empty
-    boost::gil::gray8_pixel_t fill(255 - _req->threshold_2d);
-    boost::gil::gray8_pixel_t blank(255);
-    boost::gil::gray8_image_t image(num_points_x, num_points_y);
-
-    // Initially fill all area with empty pixel value
-    boost::gil::fill_pixels(image._view, blank);
-
-    // Create a point cloud object
     pcl::PointCloud<pcl::PointXYZ> cloud;
-    std::string entityName;
-    ignition::math::Vector3d start, end;
-    double dx, dy, dz, dist;
-    cloud.width    = num_points_x;
-    cloud.height   = num_points_y;
-        
-    struct PointMask {
-                int x, y, z;
-            };
-    PointMask directions[6] = {
-                {-1, 0, 0}, // Left
-                {1, 0, 0},  // Right
-                {0, 1, 0},  // Front
-                {0, -1, 0}, // Back
-                {0, 0, 1},  // Top
-                {0, 0, -1}  // Bottom
-            };
 
-    for (int x = 0; x < num_points_x; ++x) 
+
+
+    //auto rayQuery = gz::physics::RayQuery();
+
+    for (int x = 0; x < num_points_x; ++x)
     {
-        std::cout << "\rPercent complete: " << x * 100.0 / num_points_x << "%       " << std::flush;
-        
-        double cur_x = _req->lowerright.x + x * step_x; 
-        for (int y = 0; y < num_points_y; ++y)
+      double cur_x = req->lowerright.x + x * step_x;
+      for (int y = 0; y < num_points_y; ++y)
+      {
+        double cur_y = req->upperleft.y + y * step_y;
+        for (int z = 0; z < num_points_z; ++z)
         {
-            double cur_y = _req->upperleft.y + y * step_y;    
-            
-            ignition::math::Vector3d startV(cur_x, cur_y, _req->lowerright.z);
-            ignition::math::Vector3d endV(cur_x, cur_y, _req->upperleft.z);
-            
-            // Detect collision upward until top of area.  z direction
-            ray->SetPoints(startV, endV);
-            ray->GetIntersection(dist, entityName);              
-            if (!entityName.empty())
-            { 
-              image._view(x,y) = fill;                      
-            }
-           
+          double cur_z = req->lowerright.z + z * step_z;
+          gz::math::Vector3d start(cur_x, cur_y, cur_z);
+          gz::math::Vector3d end = start + gz::math::Vector3d(0, 0, step_z);
 
-            // Walk in z direction to check each point for any collision to it's neighbours
-            for (int z = 0; z < num_points_z; ++z)
-            {
-                double cur_z = _req->lowerright.z + z * step_z;
-                ignition::math::Vector3d start(cur_x, cur_y, cur_z);
+          //auto result = rayQuery.CastRay(_ecm, start, end);
 
-                // Check for right, left, front, back, top and bottom points for collision.
-                // 2d mode checks for right, left, front and back.  see dims assignment.
-                for(int i = 0; i < dims; ++i) {
-                    dx =  directions[i].x * step_x * _req->range_multiplier;
-                    dy =  directions[i].y * step_y * _req->range_multiplier;
-                    dz =  directions[i].z * step_z *_req->range_multiplier;
-                    ignition::math::Vector3d end(cur_x + dx, cur_y + dy, cur_z + dz);
-                    
-                    ray->SetPoints(start, end);
-                    ray->GetIntersection(dist, entityName);
-                    if (!entityName.empty())
-                    { 
-                      // Collision found.  Push point to cloud and set in image
-                      cloud.push_back(pcl::PointXYZ(cur_x, cur_y, cur_z));
-                      image._view(x,y) = fill;
-                      break;
-                    }            
-                }
-            }
+          //if (result)
+          {
+            cloud.push_back(pcl::PointXYZ(cur_x, cur_y, cur_z));
+          }
         }
-    }
-   
-    std::cout << std::endl << "Completed calculations, writing to image" << std::endl;
-    
-    if (!_req->filename.empty())
-    { 
-        if(cloud.size() > 0)
-        {
-          // Save pcd file
-          pcl::io::savePCDFileASCII (_req->filename + ".pcd", cloud);
-        
-          // Save octomap file
-          octomap::OcTree octree(_req->resolution);
-          for (auto p:cloud.points)
-              octree.updateNode(octomap::point3d(p.x, p.y, p.z), true );
-          octree.updateInnerOccupancy();
-          octree.writeBinary(_req->filename + ".bt");
-        }
-
-        // Save png file
-        boost::gil::gray8_view_t view = image._view;
-        boost::gil::png_write_view(_req->filename+".png", view); 
-
-        // Save pgm file
-        pgm_write_view(_req->filename, view);
-
-        // Write down yaml file for nav2 usage.
-        std::unordered_map<std::string, std::string> yaml_dict;
-        yaml_dict["image"] = _req->filename + ".pgm";
-        yaml_dict["mode"] = "trinary";
-        yaml_dict["resolution"] = std::to_string(_req->resolution);
-        yaml_dict["origin"] =  "[" + std::to_string(_req->lowerright.x) + std::string(", ") + std::to_string(_req->lowerright.y) + std::string(", 0.0]");
-        yaml_dict["negate"] = "0";
-        yaml_dict["occupied_thresh"] = "0.95";  // hardcoding these values since we absolutely know occupied or free
-        yaml_dict["free_thresh"] = "0.90";  
-
-        std::ofstream outputFile(_req->filename + ".yaml");
-        if (outputFile.is_open()) {
-            for (const auto& pair : yaml_dict) {
-                outputFile << pair.first << ": " << pair.second << std::endl;
-            }
-            outputFile.close();
-        } else {
-            std::cout << "Unable to open yaml file for writing." << std::endl;
-        }
-
-        std::cout << "Output location: " << _req->filename + "[.pcd, .bt, .pgm, .png, .yaml]" << std::endl;
-    }
-
-   
-    std::cout << std::endl;
-    _res->success = true;
-  }
-
-
-  public: void pgm_write_view(const std::string& filename, boost::gil::gray8_view_t& view)
-  {
-    // Write image to pgm file
-
-    int h = view.height();
-    int w = view.width();
-
-    std::ofstream ofs;
-    ofs.open(filename+".pgm");
-    ofs << "P2" << '\n';          // grayscale
-    ofs << w << ' ' << h << '\n'; // width and height
-    ofs << 255 <<  '\n';          // max value
-    for (int y = 0; y < h; ++y){
-      for (int x = 0; x < w; ++x){
-        // std::cout << (int)view(x, y)[0];
-        ofs << (int)view(x, y)[0] << ' ';
       }
-      ofs << '\n';
     }
-    ofs.close();
-  }
-};
 
-// Register this plugin with the simulator
-GZ_REGISTER_SYSTEM_PLUGIN(GazeboMapCreator)
-}
+    if (!req->filename.empty() && cloud.size() > 0)
+    {
+      pcl::io::savePCDFileASCII(req->filename + ".pcd", cloud);
+
+      octomap::OcTree octree(req->resolution);
+      for (const auto &p : cloud.points)
+        octree.updateNode(octomap::point3d(p.x, p.y, p.z), true);
+
+      octree.updateInnerOccupancy();
+      octree.writeBinary(req->filename + ".bt");
+
+      RCLCPP_INFO(node_->get_logger(), "Output saved: %s[.pcd, .bt]", req->filename.c_str());
+    }
+   
+    res->success = true;
+  }
+
+  void OnLidarData(const gz::msgs::LaserScan &msg)
+  {
+    std::lock_guard<std::mutex> lock(lidar_mutex_);
+    latest_lidar_points_.clear();
+    double angle = msg.angle_min();
+    for (int i = 0; i < msg.ranges_size(); ++i)
+    {
+      double r = msg.ranges(i);
+      if (r < msg.range_max())
+      {
+        double x = r * cos(angle);
+        double y = r * sin(angle);
+        latest_lidar_points_.emplace_back(x, y, 0);
+      }
+      angle += msg.angle_step();
+    }
+  }
+
+private:
+  rclcpp::Node::SharedPtr node_;
+  rclcpp::Service<gazebo_map_creator_interface::srv::MapRequest>::SharedPtr map_service_;
+  gz::transport::Node gz_node_;
+  std::vector<gz::math::Vector3d> latest_lidar_points_;
+  std::mutex lidar_mutex_;
+};
+}  // namespace gazebo_map_creator
+
+ // Register plugin
+GZ_ADD_PLUGIN(gazebo_map_creator::GazeboMapCreator,
+                    gz::sim::System,
+                    gazebo_map_creator::GazeboMapCreator::ISystemConfigure)
